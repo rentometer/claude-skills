@@ -2,14 +2,14 @@
 # Install Rentometer skills into ~/.claude/skills/
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/rentometer/rentometer2/main/claude-skills/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/rentometer/claude-skills/main/install.sh | bash
 #
 # Or, from a local clone:
-#   ./claude-skills/install.sh
+#   ./install.sh
 
 set -euo pipefail
 
-SKILLS_REPO_RAW="https://raw.githubusercontent.com/rentometer/rentometer2/main/claude-skills"
+SKILLS_REPO_RAW="https://raw.githubusercontent.com/rentometer/claude-skills/main"
 DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 
 SKILLS=(

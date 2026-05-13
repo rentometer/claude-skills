@@ -27,15 +27,15 @@ Skills live in `~/.claude/skills/` (user-level) or `.claude/skills/` (per-projec
 ### One-liner
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rentometer/rentometer2/main/claude-skills/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/rentometer/claude-skills/main/install.sh | bash
 ```
 
-### From this repo
+### From source
 
 ```bash
-git clone https://github.com/rentometer/rentometer2.git
+git clone https://github.com/rentometer/claude-skills.git
 mkdir -p ~/.claude/skills
-cp -R rentometer2/claude-skills/skills/* ~/.claude/skills/
+cp -R claude-skills/skills/* ~/.claude/skills/
 ```
 
 ### Verify
