@@ -1,15 +1,15 @@
 ---
 name: rentometer-login
-description: Set up authentication for the Rentometer skills. Validates a Rentometer API key and stores it locally so subsequent /rentometer-* skills can call the Pro API. Use when the user hasn't configured a key yet, when other skills return 401, or when the user says "log in to Rentometer", "set my Rentometer API key", "rentometer auth".
+description: Set up authentication for the Rentometer skills using the OAuth 2.0 device authorization flow (browser-based, no key copy-paste). Falls back to manual key entry if requested. Use when the user hasn't configured a key yet, when other skills return 401, or when the user says "log in to Rentometer", "set my Rentometer API key", "rentometer auth".
 ---
 
 # Rentometer Login
 
-Configure the API credential used by every Pro-gated `/rentometer-*` skill in this package. Credentials are stored on-disk in the user's config dir with 0600 perms; nothing leaves the local machine except a single validation call to Rentometer.
+Configure the API credential used by every Pro-gated `/rentometer-*` skill in this package. The default flow is browser-based (RFC 8628 device authorization grant) — the user signs into rentometer.com in their browser, the CLI receives the key automatically. Credentials are stored on-disk in the user's config dir with `0600` perms; nothing leaves the local machine except the device-flow API calls.
 
 ## Step 1 — Check current state first
 
-Don't reconfigure if a working credential is already present. Run:
+Don't reconfigure if a working credential is already present:
 
 ```bash
 RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
@@ -22,60 +22,107 @@ if [[ -n "$RENTOMETER_API_KEY" ]]; then
 fi
 ```
 
-- `200` → already authenticated. Tell the user, offer to run `/rentometer-quota` to show their usage, and stop. Don't overwrite a working key without permission.
+- `200` → already authenticated. Tell the user, offer to run `/rentometer-quota`, and stop. Don't overwrite a working key without permission.
 - `401` → stored key is invalid; proceed to Step 2 (and offer to delete the bad file).
 - Empty / no key → proceed to Step 2.
 
-## Step 2 — Walk the user through getting a key
+## Step 2 — Request a device code
 
-Print, verbatim:
+Hit the device-authorization endpoint to mint a code pair:
 
-> Generate (or copy) a Rentometer API key here:
-> **https://www.rentometer.com/rentometer-api/settings**
->
-> Requires an active Pro subscription with API access enabled. If you don't
-> have one yet, the free `/rentometer-area` skill works without a key.
-
-Then ask: "Want me to open that page in your browser?"
-
-If yes:
 ```bash
-# macOS
-open "https://www.rentometer.com/rentometer-api/settings" 2>/dev/null \
-  || xdg-open "https://www.rentometer.com/rentometer-api/settings" 2>/dev/null \
+RESPONSE=$(curl -sS -X POST "https://www.rentometer.com/api/v1/auth/device/code" \
+  --data-urlencode "client_name=rentometer-claude-skills")
+echo "$RESPONSE"
+```
+
+Parse the response. The fields you need are:
+
+- `device_code` — secret, used to poll for the token
+- `user_code` — short human-readable code shown to the user (e.g. `BCDF-GHJK`)
+- `verification_uri_complete` — the URL to send the user to (includes the user_code as a path segment)
+- `interval` — seconds between polls (typically 5)
+- `expires_in` — total seconds before the request expires (typically 600)
+
+If `jq` is available: `device_code=$(echo "$RESPONSE" | jq -r '.device_code')` etc. If not, use `ruby -rjson -e 'puts JSON.parse(STDIN.read)["device_code"]' <<< "$RESPONSE"` or `python3 -c 'import json,sys; print(json.load(sys.stdin)["device_code"])'`.
+
+## Step 3 — Send the user to the browser
+
+Display the user_code and verification URL prominently. Print verbatim:
+
+> **Open this URL in your browser to authorize:**
+> {verification_uri_complete}
+>
+> The page will ask you to sign in to rentometer.com (or sign up if you don't
+> have an account) and confirm the code:
+> **{user_code}**
+>
+> Waiting for authorization…
+
+Ask once: "Want me to open the URL in your browser?" If yes:
+
+```bash
+open "$VERIFICATION_URI_COMPLETE" 2>/dev/null \
+  || xdg-open "$VERIFICATION_URI_COMPLETE" 2>/dev/null \
+  || start "" "$VERIFICATION_URI_COMPLETE" 2>/dev/null \
   || echo "(Open the URL above manually)"
 ```
 
 Don't open the URL without asking.
 
-## Step 3 — Take the pasted key
+## Step 4 — Poll for the token
 
-Ask: "Paste your API key here when ready." Treat the input as secret:
-- Do **not** echo it back in any tool call output
-- Do **not** include it in markdown blocks the user will see
-- Do **not** write it to any file other than the credential file in Step 5
-
-## Step 4 — Validate before saving
-
-Call `/api/v1/rate_limit` (free, no credit cost) to confirm the key works:
+Loop on `POST /api/v1/auth/device/token` every `interval` seconds. Cap the total loop at `expires_in` seconds (typically 10 min).
 
 ```bash
-PASTED_KEY=<the key from the user>
-HTTP=$(curl -sS -o /tmp/.rentometer-validate -w "%{http_code}" \
-  "https://www.rentometer.com/api/v1/rate_limit" \
-  -H "Authorization: Bearer $PASTED_KEY")
-rm -f /tmp/.rentometer-validate
-echo "Validation: $HTTP"
+DEADLINE=$(( $(date +%s) + EXPIRES_IN ))
+WAIT=$INTERVAL
+
+while [[ $(date +%s) -lt $DEADLINE ]]; do
+  TOKEN_RESPONSE=$(curl -sS -X POST "https://www.rentometer.com/api/v1/auth/device/token" \
+    --data-urlencode "device_code=$DEVICE_CODE")
+
+  ERROR=$(echo "$TOKEN_RESPONSE" | jq -r '.error // empty')
+
+  case "$ERROR" in
+    "")  # success
+      PASTED_KEY=$(echo "$TOKEN_RESPONSE" | jq -r '.api_key')
+      ACCOUNT_EMAIL=$(echo "$TOKEN_RESPONSE" | jq -r '.account_email')
+      break
+      ;;
+    authorization_pending)
+      sleep "$WAIT"
+      ;;
+    slow_down)
+      WAIT=$((WAIT + 5))
+      sleep "$WAIT"
+      ;;
+    expired_token)
+      echo "Code expired. Re-run /rentometer-login to start over."
+      exit 1
+      ;;
+    access_denied)
+      echo "Authorization was denied in the browser."
+      exit 1
+      ;;
+    *)
+      echo "Unexpected error: $ERROR"
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "${PASTED_KEY:-}" ]]; then
+  echo "Authorization timed out. Try again."
+  exit 1
+fi
 ```
 
-- `200` → valid; proceed to Step 5
-- `401` → invalid; ask user to recheck. Common causes: copied the wrong string, key was revoked, Pro subscription expired.
-- `429` → valid but rate-limited right now. Accept it.
-- Other → network issue; surface the status code.
+During the wait, give the user a heartbeat so they don't think the skill hung — e.g. print a dot or "Still waiting…" every few iterations. Don't print the device_code or the eventual API key.
 
 ## Step 5 — Save the credential
 
-Write to `~/.config/rentometer/api_key` with restrictive perms:
+Write to `~/.config/rentometer/api_key` with restrictive perms. **Never echo the key back to the user or include it in tool-result text.**
 
 ```bash
 mkdir -p "$HOME/.config/rentometer"
@@ -84,38 +131,15 @@ chmod 700 "$HOME/.config/rentometer"
 chmod 600 "$HOME/.config/rentometer/api_key"
 ```
 
-Confirm to the user: "Saved to `~/.config/rentometer/api_key`."
+Confirm to the user: "Saved credential for `<account_email>` to `~/.config/rentometer/api_key`."
 
 ## Step 6 — Offer to persist as env var (optional)
 
-Some users like having `$RENTOMETER_API_KEY` set in every shell. Ask:
-
-> Want me to add an `export RENTOMETER_API_KEY=…` line to your shell rc so it's available everywhere? (Skills work fine without this — they'll fall back to the saved file.)
-
-If yes, detect the shell and append to the right rc file:
+Same as before — ask once, append to `~/.zshrc` / `~/.bashrc` / `~/.config/fish/config.fish` only if they say yes:
 
 ```bash
-SHELL_RC=""
-case "$(basename "$SHELL")" in
-  zsh)  SHELL_RC="$HOME/.zshrc" ;;
-  bash) SHELL_RC="$HOME/.bashrc" ;;
-  fish) SHELL_RC="$HOME/.config/fish/config.fish" ;;
-esac
+export RENTOMETER_API_KEY="$(cat $HOME/.config/rentometer/api_key 2>/dev/null || true)"
 ```
-
-Skip if already present (grep for `RENTOMETER_API_KEY`). For zsh/bash:
-```bash
-echo 'export RENTOMETER_API_KEY="$(cat $HOME/.config/rentometer/api_key 2>/dev/null || true)"' \
-  >> "$SHELL_RC"
-```
-
-For fish:
-```bash
-echo 'set -gx RENTOMETER_API_KEY (cat ~/.config/rentometer/api_key 2>/dev/null; or echo "")' \
-  >> "$SHELL_RC"
-```
-
-Tell them to `source "$SHELL_RC"` or open a new shell.
 
 ## Step 7 — Confirm and suggest next steps
 
@@ -123,6 +147,15 @@ Tell them to `source "$SHELL_RC"` or open a new shell.
 > - `/rentometer-quota` — confirm usage limits and tier
 > - `/rentometer-summary <address> <bedrooms>` — get rent stats for a property
 > - `/rentometer-analyze <address>` — full multi-agent investment analysis
+
+## Fallback: manual key entry
+
+If the user can't use a browser (CI environments, headless boxes, etc.) or explicitly asks to paste a key directly, fall back to the legacy flow:
+
+1. Ask them to generate a key at https://www.rentometer.com/rentometer-api/settings
+2. Ask them to paste it. Treat input as secret — do not echo back.
+3. Validate via `curl /api/v1/rate_limit` with the pasted key. Reject if non-200.
+4. Save to `~/.config/rentometer/api_key` exactly as in Step 5.
 
 ## Logout
 
@@ -133,10 +166,11 @@ rm -f "$HOME/.config/rentometer/api_key"
 echo "Removed ~/.config/rentometer/api_key"
 ```
 
-Tell them to also `unset RENTOMETER_API_KEY` in the current shell and remove any export line from their shell rc (point them at the line you added in Step 6, if any). Don't edit their rc to remove it without asking.
+Tell them to also `unset RENTOMETER_API_KEY` in the current shell and remove any export line from their shell rc.
 
 ## Security notes
 
 - Never include the key value in a markdown code block visible to the user.
 - Never pass the key as a CLI argument (it'd show up in `ps`/shell history). Always use the `Authorization: Bearer` header.
-- The credential file is per-user (`0600`); on a multi-user host, anyone with root can still read it. Rentometer treats keys as bearer credentials with no second factor — rotating the key in settings invalidates the stolen copy.
+- The credential file is per-user (`0600`); on a multi-user host, anyone with root can still read it. Rotating the key in the user's account settings invalidates any stolen copy.
+- The device_code is also sensitive while authorization is pending — keep it in shell variables, not on disk.

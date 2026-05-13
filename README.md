@@ -50,14 +50,17 @@ Most skills require a Rentometer Pro API key. The easiest path:
 /rentometer-login
 ```
 
-That skill walks you through:
+That skill walks you through the OAuth 2.0 device-authorization flow
+(no key copy-paste required):
 
-1. Opening https://www.rentometer.com/rentometer-api/settings to generate or
-   copy a key (Pro subscription with API access required)
-2. Pasting the key (never echoed back)
-3. Validating it against `/api/v1/rate_limit` before saving
-4. Storing it at `~/.config/rentometer/api_key` with `0600` perms
-5. Optionally appending `export RENTOMETER_API_KEY=…` to your shell rc
+1. Mints a short human-readable code (e.g. `BCDF-GHJK`) and a verification URL
+2. Opens the URL in your browser (with your permission)
+3. You sign in to rentometer.com, confirm the code, click **Authorize**
+4. The skill receives the new key and stores it at
+   `~/.config/rentometer/api_key` with `0600` perms
+
+For CI environments or if you'd rather paste a key directly, the skill also
+supports the legacy manual flow.
 
 ### How skills find the key
 
