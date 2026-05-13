@@ -17,9 +17,13 @@ If the user gives a vague address ("123 Main"), ask them for city/state. Don't g
 
 ## Auth
 
-Read the API key from `$RENTOMETER_API_KEY`. If unset, tell the user:
+Resolve the API key in this order:
 
-> No Rentometer API key found. Generate one at https://www.rentometer.com/rentometer-api/settings, then run `export RENTOMETER_API_KEY=<key>` (or add it to your shell profile).
+```bash
+RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
+```
+
+If `$RENTOMETER_API_KEY` is still empty after that, tell the user to run `/rentometer-login` (don't try to walk them through it inline — that skill exists for a reason).
 
 ## Make the call
 

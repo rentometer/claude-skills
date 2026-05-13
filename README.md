@@ -9,6 +9,7 @@ Rentometer's first-party data instead of scraped listings.
 
 | Skill | What it does | Cost (Rentometer credits) | Auth |
 |---|---|---|---|
+| `/rentometer-login` | One-time setup: validate + store your Rentometer API key | free | — |
 | `/rentometer-summary` | Rent stats (mean/median/percentiles) for an address | 1 quickview | Pro API key |
 | `/rentometer-comps` | The individual comparable listings backing a search | 1 premium | Pro API key |
 | `/rentometer-batch` | Run summary on N properties at once | N quickview | Pro API key |
@@ -43,22 +44,53 @@ Start `claude` and type `/rentometer` — autocomplete should list every skill a
 
 ## Authentication
 
-Most skills require a Rentometer Pro API key. Generate one at:
+Most skills require a Rentometer Pro API key. The easiest path:
 
-  **https://www.rentometer.com/rentometer-api/settings**
-
-Then set the environment variable (add it to `~/.zshrc` / `~/.bashrc` to persist):
-
-```bash
-export RENTOMETER_API_KEY=your_key_here
+```text
+/rentometer-login
 ```
 
-Skills read this env var directly via `curl` and pass it as
-`Authorization: Bearer $RENTOMETER_API_KEY`. They never write it to disk and
-never echo it back to the model.
+That skill walks you through:
+
+1. Opening https://www.rentometer.com/rentometer-api/settings to generate or
+   copy a key (Pro subscription with API access required)
+2. Pasting the key (never echoed back)
+3. Validating it against `/api/v1/rate_limit` before saving
+4. Storing it at `~/.config/rentometer/api_key` with `0600` perms
+5. Optionally appending `export RENTOMETER_API_KEY=…` to your shell rc
+
+### How skills find the key
+
+Every Pro-gated skill resolves credentials in this order:
+
+```bash
+RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
+```
+
+So either approach works:
+
+- **Recommended**: run `/rentometer-login` once; skills read the saved file
+- **CI / shared shells**: set `$RENTOMETER_API_KEY` as an environment variable
+
+The key is sent only as `Authorization: Bearer …` to `rentometer.com`. It is
+never passed on the command line (no shell-history leakage) and never written
+to logs.
 
 Credit balance, plan tier, and rate limits are enforced server-side by your
 existing Rentometer Pro subscription — no extra configuration needed.
+
+### Logging out
+
+```text
+/rentometer-login
+```
+
+Tell the skill you want to log out, or just run:
+
+```bash
+rm -f ~/.config/rentometer/api_key
+unset RENTOMETER_API_KEY
+```
 
 ## Why these are different from "AI real estate" skills you've seen elsewhere
 

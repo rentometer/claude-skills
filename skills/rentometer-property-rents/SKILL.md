@@ -7,6 +7,14 @@ description: Look up the actual historical rents recorded for a specific address
 
 Pulls historical rental listing records for a single address. Different from `/rentometer-summary` (aggregate neighborhood stats) and `/rentometer-comps` (nearby properties) — this returns records for the exact address.
 
+## Auth
+
+```bash
+RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
+```
+
+If still empty, tell the user to run `/rentometer-login`.
+
 ## Make the call
 
 ```bash

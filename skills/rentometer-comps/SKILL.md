@@ -19,7 +19,11 @@ OR — preferred when you already ran a summary — a **token** from a prior `/r
 
 ## Auth
 
-Read `$RENTOMETER_API_KEY` from env. Same handling as `/rentometer-summary`.
+```bash
+RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
+```
+
+If still empty, tell the user to run `/rentometer-login`.
 
 ## Make the call
 

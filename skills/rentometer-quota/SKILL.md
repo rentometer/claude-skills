@@ -7,6 +7,14 @@ description: Check the user's Rentometer API rate-limit usage and credit balance
 
 Check current rate-limit usage. Free to call.
 
+## Auth
+
+```bash
+RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
+```
+
+If still empty, tell the user to run `/rentometer-login`.
+
 ## Make the call
 
 ```bash

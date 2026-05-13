@@ -19,7 +19,11 @@ You can also pass top-level `defaults` (`look_back_days`, `baths`, `building_typ
 
 ## Auth
 
-`$RENTOMETER_API_KEY` env var. Each property in the batch consumes 1 quickview credit — verify the user has enough first via `/rentometer-quota` if the batch is large.
+```bash
+RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
+```
+
+If still empty, tell the user to run `/rentometer-login`. Each property in the batch consumes 1 quickview credit — verify the user has enough first via `/rentometer-quota` if the batch is large.
 
 ## Step 1 — Submit
 

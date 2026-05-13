@@ -13,6 +13,7 @@ SKILLS_REPO_RAW="https://raw.githubusercontent.com/rentometer/rentometer2/main/c
 DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 
 SKILLS=(
+  rentometer-login
   rentometer-summary
   rentometer-comps
   rentometer-batch
@@ -50,16 +51,22 @@ fi
 echo
 echo "Done. ${#SKILLS[@]} skills installed."
 echo
-if [[ -z "${RENTOMETER_API_KEY:-}" ]]; then
-  cat <<EOF
-Next step — set your API key:
 
-  1. Generate one at https://www.rentometer.com/rentometer-api/settings
-  2. export RENTOMETER_API_KEY=your_key_here
-  3. (optional) add the export to ~/.zshrc or ~/.bashrc to persist
-
-The free /rentometer-area and /rentometer-area-search skills work without a key.
-EOF
+CRED_FILE="$HOME/.config/rentometer/api_key"
+if [[ -n "${RENTOMETER_API_KEY:-}" ]]; then
+  echo "RENTOMETER_API_KEY is set in your environment — you're ready to go."
+  echo "Try: /rentometer-summary <address>"
+elif [[ -s "$CRED_FILE" ]]; then
+  echo "Saved credential found at $CRED_FILE — you're ready to go."
+  echo "Try: /rentometer-quota to confirm, or /rentometer-summary <address>."
 else
-  echo "RENTOMETER_API_KEY is set — you're ready to go. Try: /rentometer-summary"
+  cat <<'EOF'
+Next step — authenticate. Inside Claude Code, run:
+
+  /rentometer-login
+
+That'll walk you through generating an API key and saving it locally.
+The free /rentometer-area and /rentometer-area-search skills work
+without a key.
+EOF
 fi

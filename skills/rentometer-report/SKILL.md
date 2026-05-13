@@ -7,6 +7,14 @@ description: Request a full Rentometer Pro PDF report (charts, comps map, deeper
 
 Three-step workflow: request → poll → download. Requires a `token` from a prior `/rentometer-summary` call (the token identifies which search to render).
 
+## Auth
+
+```bash
+RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/dev/null || true)}"
+```
+
+If still empty, tell the user to run `/rentometer-login`.
+
 ## Step 0 — Get a token
 
 If you don't already have one, run `/rentometer-summary` first. Grab the `token` field from its response.
