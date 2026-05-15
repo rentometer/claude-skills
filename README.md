@@ -10,15 +10,17 @@ Rentometer's first-party data instead of scraped listings.
 | Skill | What it does | Cost (Rentometer credits) | Auth |
 |---|---|---|---|
 | `/rentometer-login` | One-time setup: validate + store your Rentometer API key | free | — |
-| `/rentometer-summary` | Rent stats (mean/median/percentiles) for an address | 1 quickview | Pro API key |
+| `/rentometer-summary` | Rent stats for an address, lat/lng point, or Atlas slug | 1 quickview | Pro API key |
 | `/rentometer-comps` | The individual comparable listings backing a search | 1 premium | Pro API key |
 | `/rentometer-batch` | Run summary on N properties at once | N quickview | Pro API key |
 | `/rentometer-property-rents` | Historical rents for one exact address | 1 premium | Pro API key |
 | `/rentometer-report` | Generate + download a Pro PDF report | 1 pro_report | Pro API key |
-| `/rentometer-area` | Public rent stats for a metro/city/ZIP/school district | free | none |
-| `/rentometer-area-search` | Find the area ID for a place name | free | none |
+| `/rentometer-atlas-search` | Resolve a place name to an Atlas slug | free | Pro API key |
+| `/rentometer-atlas-facts` | Live area bundle: rent + ACS + HUD + BLS + Census | 1 quickview | Pro API key |
+| `/rentometer-area` | Public precomputed rent stats (sparse — prefer atlas-facts) | free | none |
+| `/rentometer-area-search` | Find the area ID for `/rentometer-area` | free | none |
 | `/rentometer-quota` | Check API rate-limit usage | free | Pro API key |
-| `/rentometer-analyze` | Flagship: multi-agent full investment analysis | ~2 quickview + 1 premium | Pro API key |
+| `/rentometer-analyze` | Flagship: multi-agent full analysis (address OR area input) | ~2 quickview + 1 premium (address path) / ~1 quickview (area path) | Pro API key |
 
 ## Install
 

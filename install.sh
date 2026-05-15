@@ -19,6 +19,8 @@ SKILLS=(
   rentometer-batch
   rentometer-property-rents
   rentometer-report
+  rentometer-atlas-search
+  rentometer-atlas-facts
   rentometer-area
   rentometer-area-search
   rentometer-quota
