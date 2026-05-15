@@ -64,3 +64,15 @@ Cap polling at ~10 minutes for safety. Use bash `until` with `sleep 10`.
 ## Present results
 
 Render a table: address, median rent, samples, status (ok/insufficient_data/error). Call out any rows with samples < 10 (low-confidence) or errors. If the user provided a CSV, offer to write the results back to a CSV file in the working directory.
+
+## See also — area enrichment for portfolio analysis
+
+If the batch is a portfolio across multiple ZIPs / metros, it's often more useful to also pull `/rentometer-atlas-facts` for each **unique area** in the result set rather than each individual property. Pseudocode:
+
+1. From batch results, extract unique ZIPs (parse from each geocoded address)
+2. For each unique ZIP: `/rentometer-atlas-search q=<ZIP>` → `/rentometer-atlas-facts slug=<best_match>`
+3. Join the area-level numbers (median, ACS, HUD FMR, unemployment) back to each property row
+
+That gives the user a per-property rent estimate **plus** market context (is this ZIP affordable for renters? what's the unemployment trend? are new permits eating supply?). 1 quickview credit per unique area, on top of the N quickview credits the batch already charges.
+
+For full agentic investment analysis on each batch row, run `/rentometer-analyze` on each address individually — but that's expensive at scale (~5 sub-agents × N properties).

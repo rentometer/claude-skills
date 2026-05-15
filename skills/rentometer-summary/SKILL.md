@@ -89,3 +89,13 @@ Format as a compact table. Always include:
 - `402 Not enough credits` → tell user to refill at https://www.rentometer.com/rentometer-api/settings
 - `404 Address not found` → ask user to provide a more specific address or lat/lng
 - `422 Not enough properties for analysis in that area` → suggest widening look_back_days or removing baths/building_type filters
+
+## See also — surrounding-area context
+
+The summary tells you what this *property* rents for. To see what's in and around the *area* — demographics, fair-market rents, unemployment, building permits — chain into the Atlas:
+
+1. Extract the ZIP (or `City, ST`) from the geocoded `address` in the response.
+2. `/rentometer-atlas-search` with that as `q` → take the best-match `slug`.
+3. `/rentometer-atlas-facts` on that slug → first-party ACS / HUD / BLS / Census bundle for the surrounding area.
+
+Worth offering after a summary if the user is doing investment analysis or trying to understand the neighborhood. This is exactly what `/rentometer-analyze` does automatically on its address path — point users at that flagship skill if they want it wrapped up in a graded report.
