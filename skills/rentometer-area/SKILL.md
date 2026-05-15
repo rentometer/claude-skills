@@ -7,6 +7,8 @@ description: Get aggregate rent statistics for a US metro, city, school district
 
 Look up pre-computed rent statistics for a US geographic area. This endpoint is **public** — no API key needed, free to call. Rate-limited to 100 requests/hour per IP.
 
+> **Not what you want?** If the user has a Rentometer Pro API key configured (`/rentometer-login`), prefer `/rentometer-atlas-facts` — it's live, broader, and returns demographics + HUD FMR + BLS unemployment + building permits in addition to rent stats. This skill (`/rentometer-area`) reads from a precomputed `RentalStatistics` table that's sparse in production today; many areas will 404 with `insufficient_data`. Use this skill only when the user has no API key or specifically asks for the public endpoint.
+
 ## Picking the right endpoint
 
 Four area types, each with its own path:
