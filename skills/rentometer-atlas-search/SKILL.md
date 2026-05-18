@@ -59,15 +59,4 @@ If there's one obvious match, name it and proceed (offer to call `/rentometer-at
 
 - `401` → API key invalid; tell user to run `/rentometer-login`.
 - `429` → rate-limited. Back off; run `/rentometer-quota` to see the window.
-- Empty `results` → narrow or rephrase the query, or fall back to `/rentometer-area-search` for the precomputed catalog (different data source).
-
-## How this differs from `/rentometer-area-search`
-
-| | `/rentometer-atlas-search` | `/rentometer-area-search` |
-|---|---|---|
-| Backed by | Live `GeographicSlug` catalog | Precomputed `RentalStatistics` rows |
-| Auth | API key | Public |
-| Coverage | Broad (any Atlas area with listings) | Sparse in prod today |
-| Use for | Looking up an area to pass to `/rentometer-atlas-facts` or `/rentometer-summary?slug=` | Looking up an area ID to pass to `/rentometer-area` |
-
-When in doubt, prefer `/rentometer-atlas-search`.
+- Empty `results` → narrow or rephrase the query.

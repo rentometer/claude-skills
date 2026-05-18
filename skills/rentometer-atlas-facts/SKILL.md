@@ -114,4 +114,3 @@ A good default layout:
 | Rent stats for a *bounded area* | `/rentometer-summary` with `slug=...`, OR (more useful) `/rentometer-atlas-facts` |
 | Everything we know about an area (this skill's superpower) | `/rentometer-atlas-facts` |
 | Individual comp listings backing a search | `/rentometer-comps` (after a summary) |
-| Precomputed aggregate stats for a metro/city/ZIP without an API key | `/rentometer-area` (mostly empty in prod today; prefer this skill) |

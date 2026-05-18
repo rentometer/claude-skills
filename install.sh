@@ -21,8 +21,6 @@ SKILLS=(
   rentometer-report
   rentometer-atlas-search
   rentometer-atlas-facts
-  rentometer-area
-  rentometer-area-search
   rentometer-quota
   rentometer-analyze
   rentometer-update
@@ -79,7 +77,5 @@ Next step — authenticate. Inside Claude Code, run:
   /rentometer-login
 
 That'll walk you through generating an API key and saving it locally.
-The free /rentometer-area and /rentometer-area-search skills work
-without a key.
 EOF
 fi

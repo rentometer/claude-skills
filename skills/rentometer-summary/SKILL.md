@@ -85,7 +85,7 @@ Format as a compact table. Always include:
 ## Errors
 
 - `401 Invalid API Key` → key is wrong or expired; point user back to settings page
-- `401 No Active Subscription` → user is not Pro; offer to explain pricing or fall back to area data via `/rentometer-area`
+- `401 No Active Subscription` → user is not Pro; offer to explain pricing
 - `402 Not enough credits` → tell user to refill at https://www.rentometer.com/rentometer-api/settings
 - `404 Address not found` → ask user to provide a more specific address or lat/lng
 - `422 Not enough properties for analysis in that area` → suggest widening look_back_days or removing baths/building_type filters
