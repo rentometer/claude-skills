@@ -42,13 +42,13 @@ curl -sS -i "https://www.rentometer.com/api/v1/pro_report_status" \
 
 Status progression:
 - `202` with `status: "in queue, retry later"` and a `Retry-After: 5` header → wait, poll again
-- `303` with `status: "ready"` and a `download` link in the body → PDF is built
+- `303` with `status: "ready"` and a `links` array containing `{rel: "download", href: <url>}` → PDF is built. The `Location` response header also points at the same URL.
 
 Use `bash until` with `sleep 5`. Cap at ~3 minutes; if it's still queued, surface that to the user and offer to check again later.
 
 ## Step 3 — Download
 
-The status response's `download` link returns the PDF URL. Fetch and save it:
+Pull the URL from the `download` entry of `links[]` (or just use the `Location` header). It points at `/api/v1/download_pro_report` and serves the PDF when `download=true` is passed:
 
 ```bash
 curl -sSL -o "rentometer-report-$TOKEN.pdf" \
