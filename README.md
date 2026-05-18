@@ -21,6 +21,7 @@ Rentometer's first-party data instead of scraped listings.
 | `/rentometer-area-search` | Find the area ID for `/rentometer-area` | free | none |
 | `/rentometer-quota` | Check API rate-limit usage | free | Pro API key |
 | `/rentometer-analyze` | Flagship: multi-agent full analysis (address OR area input) | ~2 quickview + 1 premium (address path) / ~1 quickview (area path) | Pro API key |
+| `/rentometer-update` | Check if installed skills are current; re-install if not | free | — |
 
 ## Install
 
@@ -43,6 +44,16 @@ cp -R claude-skills/skills/* ~/.claude/skills/
 ### Verify
 
 Start `claude` and type `/rentometer` — autocomplete should list every skill above.
+
+### Updating
+
+Installed skills are static copies in `~/.claude/skills/` and don't auto-update. Inside Claude Code:
+
+```text
+/rentometer-update
+```
+
+That skill compares the version in `~/.config/rentometer/skills-version` against the published `VERSION` file in this repo's main branch and offers to re-run the installer if they differ. The installer is the same one-liner above — re-running it overwrites the SKILL.md files in place. Credentials and your API key are untouched.
 
 ## Authentication
 

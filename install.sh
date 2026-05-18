@@ -25,7 +25,10 @@ SKILLS=(
   rentometer-area-search
   rentometer-quota
   rentometer-analyze
+  rentometer-update
 )
+
+VERSION_FILE="$HOME/.config/rentometer/skills-version"
 
 echo "Installing Rentometer Claude Code skills into $DEST"
 mkdir -p "$DEST"
@@ -34,6 +37,8 @@ mkdir -p "$DEST"
 # SKILL.md from the raw GitHub URL.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
 
+mkdir -p "$(dirname "$VERSION_FILE")"
+
 if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/skills" ]]; then
   echo "  source: local clone ($SCRIPT_DIR/skills)"
   for skill in "${SKILLS[@]}"; do
@@ -41,6 +46,9 @@ if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/skills" ]]; then
     cp "$SCRIPT_DIR/skills/$skill/SKILL.md" "$DEST/$skill/SKILL.md"
     echo "    installed: $skill"
   done
+  if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
+    cp "$SCRIPT_DIR/VERSION" "$VERSION_FILE"
+  fi
 else
   echo "  source: $SKILLS_REPO_RAW"
   for skill in "${SKILLS[@]}"; do
@@ -48,10 +56,13 @@ else
     curl -fsSL "$SKILLS_REPO_RAW/skills/$skill/SKILL.md" -o "$DEST/$skill/SKILL.md"
     echo "    installed: $skill"
   done
+  curl -fsSL "$SKILLS_REPO_RAW/VERSION" -o "$VERSION_FILE" 2>/dev/null || true
 fi
 
+INSTALLED_VERSION="$(cat "$VERSION_FILE" 2>/dev/null | tr -d '[:space:]' || echo "unknown")"
+
 echo
-echo "Done. ${#SKILLS[@]} skills installed."
+echo "Done. ${#SKILLS[@]} skills installed (version: ${INSTALLED_VERSION:-unknown})."
 echo
 
 CRED_FILE="$HOME/.config/rentometer/api_key"
