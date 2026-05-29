@@ -17,6 +17,8 @@ Rentometer's first-party data instead of scraped listings.
 | `/rentometer-report` | Generate + download a Pro PDF report | 1 pro_report | Pro API key |
 | `/rentometer-atlas-search` | Resolve a place name to an Atlas slug | free | Pro API key |
 | `/rentometer-atlas-facts` | Live area bundle: rent + ACS + HUD + BLS + Census | 1 quickview | Pro API key |
+| `/rentometer-metrics` | List the metrics `/rentometer-rankings` can rank by, with your entitlements | free | Pro API key |
+| `/rentometer-rankings` | Rank areas by a metric ("top N cities/metros/… by X"), optionally within a parent area | 1 quickview | Pro API key |
 | `/rentometer-quota` | Check API rate-limit usage | free | Pro API key |
 | `/rentometer-analyze` | Flagship: multi-agent full analysis (address OR area input) | ~2 quickview + 1 premium (address path) / ~1 quickview (area path) | Pro API key |
 | `/rentometer-update` | Check if installed skills are current; re-install if not | free | — |
