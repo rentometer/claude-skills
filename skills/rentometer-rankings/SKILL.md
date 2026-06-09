@@ -48,7 +48,18 @@ curl -sS "https://www.rentometer.com/api/v1/atlas/metrics" \
       "default_order": "desc",            // natural "top" direction
       "area_types": ["state","metro","county","place","zcta"],
       "requires_flag": "atlas_show_acs_facts",
-      "entitled": true                    // false → your account can't rank by this
+      "entitled": true,                   // false → your account can't rank by this
+
+      // Self-documenting fields — show these to the user when they ask
+      // "what is this metric?" or "where does this number come from?"
+      // No second lookup needed.
+      "description": "Median annual household income in the area.",
+      "source": "U.S. Census Bureau, American Community Survey",
+      "source_url": "https://data.census.gov/table?q=B19013",
+      "derivation": null,                 // present for computed metrics, e.g.
+                                          //   acs.effective_property_tax_rate_pct:
+                                          //   "B25090 ÷ B25082"
+      "methodology_url": "https://www.census.gov/programs-surveys/acs/methodology.html"
     }
   ]
 }
@@ -59,6 +70,13 @@ metric where `entitled` is `false`, don't call rankings — tell them the metric
 needs a data entitlement on their account and point them at
 https://www.rentometer.com/rentometer-api/settings. (Ranking on an
 un-entitled metric returns `403`.)
+
+**Surface the descriptive fields when relevant.** When you present rankings,
+quote the metric's `description` so the user knows exactly what's being measured.
+For computed metrics (non-null `derivation`), name the formula — that's how the
+user knows whether the methodology matches what they expected. Link to
+`source_url` (or `methodology_url` as a fallback) when the user wants to verify
+the data themselves.
 
 ## Step 2 — resolve the parent area (only if scoping with `within`)
 
