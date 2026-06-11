@@ -23,6 +23,7 @@ SKILLS=(
   rentometer-atlas-facts
   rentometer-metrics
   rentometer-rankings
+  rentometer-screener
   rentometer-quota
   rentometer-quick-analysis
   rentometer-deep-analysis
