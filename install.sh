@@ -21,9 +21,19 @@ SKILLS=(
   rentometer-report
   rentometer-atlas-search
   rentometer-atlas-facts
+  rentometer-metrics
+  rentometer-rankings
   rentometer-quota
-  rentometer-analyze
+  rentometer-quick-analysis
+  rentometer-deep-analysis
   rentometer-update
+)
+
+# Skills removed in past releases. Re-running the installer should delete these
+# stale copies so /rentometer-update users don't keep a dead skill around.
+# (rentometer-analyze was split into quick-analysis + deep-analysis in 1.3.0.)
+RETIRED_SKILLS=(
+  rentometer-analyze
 )
 
 VERSION_FILE="$HOME/.config/rentometer/skills-version"
@@ -56,6 +66,14 @@ else
   done
   curl -fsSL "$SKILLS_REPO_RAW/VERSION" -o "$VERSION_FILE" 2>/dev/null || true
 fi
+
+# Remove any retired skills left over from older installs.
+for skill in "${RETIRED_SKILLS[@]}"; do
+  if [[ -d "$DEST/$skill" ]]; then
+    rm -rf "$DEST/$skill"
+    echo "    removed (retired): $skill"
+  fi
+done
 
 INSTALLED_VERSION="$(cat "$VERSION_FILE" 2>/dev/null | tr -d '[:space:]' || echo "unknown")"
 

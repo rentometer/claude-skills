@@ -65,11 +65,12 @@ Always pass `tool=claude-skills` so Rentometer can attribute usage.
 ## Interpreting the response
 
 Key fields in the JSON:
-- `mean`, `median`, `min`, `max` — rent in dollars
-- `percentile_25`, `percentile_50`, `percentile_75`, `percentile_90` — rent distribution
+- `mean`, `median`, `min`, `max`, `std_dev` — rent in dollars
+- Full percentile ladder: `percentile_5`, `percentile_10`, `percentile_20`, `percentile_25`, `percentile_50`, `percentile_75`, `percentile_80`, `percentile_90`, `percentile_95` — rent distribution
 - `samples` — number of comparable listings (anything under ~10 is thin)
 - `radius_miles` — search radius used (null on slug-bounded calls)
 - `area` — present **only** on slug-bounded calls; an object with `slug`, `name`, `type`, `area_type` identifying which bounded geography these numbers reflect
+- `atlas` — present on **point/address** searches when the account has the geo-linkage feature: an array of the bounded Atlas areas containing the searched point (broadest → narrowest), each `{slug, geoid, name, type, area_type}`. Use any returned `slug` directly with `/rentometer-atlas-facts` or `/rentometer-atlas-search` — **no separate geocode/search round-trip needed**. Absent (key omitted) when the feature is off.
 - `quickview_url` — link to the full report on rentometer.com
 - `credits_remaining` — quickview credits left in the user's wallet
 - `links` — has `request pro report` and `nearby comps` URLs; the `token` field can be reused with `/rentometer-comps` to avoid re-geocoding
@@ -94,8 +95,8 @@ Format as a compact table. Always include:
 
 The summary tells you what this *property* rents for. To see what's in and around the *area* — demographics, fair-market rents, unemployment, building permits — chain into the Atlas:
 
-1. Extract the ZIP (or `City, ST`) from the geocoded `address` in the response.
-2. `/rentometer-atlas-search` with that as `q` → take the best-match `slug`.
+1. **Preferred:** if the response has an `atlas` array, take the `slug` of the most specific useful entry (a `place`/`city` or `zcta`/`zip`) — no extra lookup needed.
+2. **Fallback** (no `atlas` array): extract the ZIP (or `City, ST`) from the geocoded `address` and call `/rentometer-atlas-search` with it as `q` → best-match `slug`.
 3. `/rentometer-atlas-facts` on that slug → first-party ACS / HUD / BLS / Census bundle for the surrounding area.
 
-Worth offering after a summary if the user is doing investment analysis or trying to understand the neighborhood. This is exactly what `/rentometer-analyze` does automatically on its address path — point users at that flagship skill if they want it wrapped up in a graded report.
+Worth offering after a summary if the user is doing investment analysis or trying to understand the neighborhood. `/rentometer-quick-analysis` does steps 1–3 automatically and prints a snapshot; `/rentometer-deep-analysis` wraps it all in a graded, multi-agent report — point users at whichever fits.

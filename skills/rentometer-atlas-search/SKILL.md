@@ -26,10 +26,28 @@ curl -sS "https://www.rentometer.com/api/v1/atlas/search" \
   -H "Authorization: Bearer $RENTOMETER_API_KEY"
 ```
 
-- `q` (required, min 2 chars) — query string
+- `q` (required\*, min 2 chars) — query string
 - `limit` (optional, 1–50, default 15)
 
 Queries shorter than 2 characters return an empty `results` array (HTTP 200, not an error).
+
+### Lookup by code instead of name
+
+\*Instead of `q`, you can resolve a Census FIPS/GEOID or a 5-digit ZCTA directly:
+
+```bash
+curl -sS "https://www.rentometer.com/api/v1/atlas/search" \
+  --get \
+  --data-urlencode "geoid=39061" \
+  --data-urlencode "area_type=county" \
+  --data-urlencode "tool=claude-skills" \
+  -H "Authorization: Bearer $RENTOMETER_API_KEY"
+```
+
+- `geoid` — a FIPS/GEOID or ZCTA code. A bare 5-digit code can match several area types (county FIPS vs CBSA vs ZCTA), so all matches are returned.
+- `area_type` (optional) — disambiguate the geoid: `state`, `metro`, `county`, `place`/`city`, `zcta`/`zip`, `neighborhood`, `school_district`. An unknown value returns `400`.
+
+Still free (pure metadata resolution). Prefer `geoid` when the user gives you a code (or when a `/rentometer-summary` `atlas` array handed you a `geoid`); use `q` for plain place names.
 
 ## Response shape
 
@@ -43,13 +61,14 @@ Queries shorter than 2 characters return an empty `results` array (HTTP 200, not
       "area_type": "neighborhood",
       "total_count": 423,
       "land_area_sq_mi": 2.6,
-      "record_density": 162.7
+      "record_density": 162.7,
+      "has_rental_data": true
     }
   ]
 }
 ```
 
-`area_type` is one of: `metro`, `city`, `zcta`, `neighborhood`, `school_district`, `county`, `state`. Results are ordered by relevance, listing density, and total listing count — the first match is usually the best.
+`area_type` is one of: `metro`, `city`, `zcta`, `neighborhood`, `school_district`, `county`, `state`. Results are ordered by relevance, listing density, and total listing count — the first match is usually the best. `has_rental_data` is `false` for areas backed only by government facts (ACS/HUD/BLS/Census) with no rental listings — those still work with `/rentometer-atlas-facts` but not with `/rentometer-summary`.
 
 ## Present to the user
 

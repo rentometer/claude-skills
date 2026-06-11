@@ -75,4 +75,4 @@ If the batch is a portfolio across multiple ZIPs / metros, it's often more usefu
 
 That gives the user a per-property rent estimate **plus** market context (is this ZIP affordable for renters? what's the unemployment trend? are new permits eating supply?). 1 quickview credit per unique area, on top of the N quickview credits the batch already charges.
 
-For full agentic investment analysis on each batch row, run `/rentometer-analyze` on each address individually — but that's expensive at scale (~5 sub-agents × N properties).
+For full agentic investment analysis on each batch row, run `/rentometer-deep-analysis` on each address individually — but that's expensive at scale (~5 sub-agents × N properties). For a lighter per-property read, `/rentometer-quick-analysis` is much cheaper.

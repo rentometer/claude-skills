@@ -17,9 +17,12 @@ RENTOMETER_API_KEY="${RENTOMETER_API_KEY:-$(cat ~/.config/rentometer/api_key 2>/
 
 If still empty, tell the user to run `/rentometer-login`.
 
-## Prerequisite: get the slug
+## Prerequisite: identify the area (slug or geoid)
 
-You need an Atlas `slug`. If the user named an area in plain English ("Hyde Park Cincinnati"), call `/rentometer-atlas-search` first to resolve it. If multiple matches come back, ask the user which one — don't guess.
+You need either an Atlas `slug` or a Census `geoid`:
+
+- **`slug`** — if the user named an area in plain English ("Hyde Park Cincinnati"), call `/rentometer-atlas-search` first to resolve it. If multiple matches come back, ask the user which one — don't guess. (A `/rentometer-summary` `atlas` array also hands you slugs directly for the area around an address.)
+- **`geoid`** — if you already have a Census FIPS/GEOID or 5-digit ZCTA (e.g. from a dataset, or from a summary's `atlas` array), pass it directly and skip the search.
 
 ## Make the call
 
@@ -30,6 +33,19 @@ curl -sS "https://www.rentometer.com/api/v1/atlas/facts" \
   --data-urlencode "tool=claude-skills" \
   -H "Authorization: Bearer $RENTOMETER_API_KEY"
 ```
+
+Or by code instead of slug:
+
+```bash
+curl -sS "https://www.rentometer.com/api/v1/atlas/facts" \
+  --get \
+  --data-urlencode "geoid=39061" \
+  --data-urlencode "area_type=county" \
+  --data-urlencode "tool=claude-skills" \
+  -H "Authorization: Bearer $RENTOMETER_API_KEY"
+```
+
+Pass exactly one of `slug` or `geoid`. With `geoid`, add `area_type` (`state`/`metro`/`county`/`place`/`city`/`zcta`/`zip`/`neighborhood`/`school_district`) to disambiguate a bare code — a 5-digit code can match a county FIPS, a CBSA, and a ZCTA at once.
 
 ## Response shape (annotated)
 
@@ -100,11 +116,11 @@ A good default layout:
 
 ## Errors
 
-- `400 slug required` → you forgot to pass `slug`.
+- `400 slug or geoid is required` → you passed neither (or an unknown `area_type`).
 - `401` → API key issue; run `/rentometer-login`.
 - `402` → out of quickview credits; refill at https://www.rentometer.com/rentometer-api/settings.
-- `404 Unknown slug` → slug doesn't exist. Re-resolve via `/rentometer-atlas-search`.
-- `422` → couldn't compute analysis (rare; area may have no listings).
+- `404` → the `slug` (or `geoid`) doesn't match an Atlas area. Re-resolve via `/rentometer-atlas-search`.
+- `422 Ambiguous geoid` → the code matches multiple area types. The response includes a `candidates` array of `{slug, area_type}` — pick one and retry with that `area_type` (or use its `slug`). (A 422 can also mean the analysis couldn't be computed — rare; area may have no listings.)
 
 ## When to use this vs other skills
 

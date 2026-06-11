@@ -20,7 +20,8 @@ Rentometer's first-party data instead of scraped listings.
 | `/rentometer-metrics` | List the metrics `/rentometer-rankings` can rank by, with your entitlements | free | Pro API key |
 | `/rentometer-rankings` | Rank areas by a metric ("top N cities/metros/… by X"), optionally within a parent area | 1 quickview | Pro API key |
 | `/rentometer-quota` | Check API rate-limit usage | free | Pro API key |
-| `/rentometer-analyze` | Flagship: multi-agent full analysis (address OR area input) | ~2 quickview + 1 premium (address path) / ~1 quickview (area path) | Pro API key |
+| `/rentometer-quick-analysis` | Fast snapshot: rent summary + Atlas facts for the surrounding area (no sub-agents) | ~2 quickview (address) / 1 quickview (area) | Pro API key |
+| `/rentometer-deep-analysis` | Flagship: multi-agent graded investment analysis (address OR area input) | ~2 quickview + 1 premium (address path) / ~1 quickview (area path) | Pro API key |
 | `/rentometer-update` | Check if installed skills are current; re-install if not | free | — |
 
 ## Install
@@ -123,9 +124,11 @@ API that powers `rentometer.com`. The result:
 - **Less hallucination**: comp counts, addresses, prices are ground-truth
 - **Cleaner attribution**: every comp links back to a real listing source
 
-The `/rentometer-analyze` skill still uses Claude sub-agents for the things
+The `/rentometer-deep-analysis` skill still uses Claude sub-agents for the things
 agents are actually good at — neighborhood/school/crime research, cash-flow
 math, strategy comparison — but anchors the *rental* numbers on real data.
+(`/rentometer-quick-analysis` is the lightweight version: rent summary plus the
+surrounding area's Atlas facts, with no sub-agent fan-out.)
 
 ## Getting a Pro subscription
 

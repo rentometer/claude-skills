@@ -146,7 +146,8 @@ export RENTOMETER_API_KEY="$(cat $HOME/.config/rentometer/api_key 2>/dev/null ||
 > Authentication configured. Try:
 > - `/rentometer-quota` — confirm usage limits and tier
 > - `/rentometer-summary <address> <bedrooms>` — get rent stats for a property
-> - `/rentometer-analyze <address>` — full multi-agent investment analysis
+> - `/rentometer-quick-analysis <address>` — fast rent + area snapshot
+> - `/rentometer-deep-analysis <address>` — full multi-agent investment analysis
 
 ## Fallback: manual key entry
 

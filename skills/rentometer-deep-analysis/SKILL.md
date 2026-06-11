@@ -1,11 +1,13 @@
 ---
-name: rentometer-analyze
-description: Run a full multi-agent rental analysis. Routes on the user's input — for a specific address, anchors on first-party Rentometer comps and fans out to parallel sub-agents for neighborhood / cashflow / market / strategy analysis. For a named area (metro / city / ZIP / neighborhood), anchors on the Rentometer Atlas first-party bundle (rent + ACS demographics + HUD FMR + BLS unemployment + Census permits) and runs a leaner sub-agent set since the area-research is already done. Costs ~2 quickview + 1 premium credit (address path) or ~1 quickview (area path). Use when the user asks for a "full analysis", "investment analysis", "should I buy [address]", "should I invest in [neighborhood/ZIP]", or pastes a listing.
+name: rentometer-deep-analysis
+description: Run a full multi-agent rental investment analysis with scoring, cashflow, and strategy. Routes on the user's input — for a specific address, anchors on first-party Rentometer comps + the surrounding-area Atlas bundle and fans out to parallel sub-agents for comps / cashflow / neighborhood / market / strategy. For a named area (metro / city / ZIP / neighborhood), anchors on the Atlas first-party bundle and runs a leaner sub-agent set. Produces a graded report (composite score, grade, buy/hold/pass signal). Costs ~2 quickview + 1 premium credit (address path) or ~1 quickview (area path). Use when the user asks for a "full analysis", "deep dive", "investment analysis", "should I buy [address]", "should I invest in [neighborhood/ZIP]", or pastes a listing and wants a verdict. For a quick rent + area snapshot without the full workup, use /rentometer-quick-analysis instead.
 ---
 
-# Rentometer Full Property / Area Analysis
+# Rentometer Deep Investment Analysis
 
-The flagship skill. Other Claude Code real-estate skills scrape Zillow/Redfin/GreatSchools/BLS at runtime — this one runs Rentometer's first-party data as the trusted backbone and uses Claude only for the analysis layer. Faster, cheaper, fewer hallucinations.
+The flagship skill. Other agentic real-estate tools scrape Zillow/Redfin/GreatSchools/BLS at runtime — this one runs Rentometer's first-party data as the trusted backbone and uses Claude only for the analysis layer. Faster, cheaper, fewer hallucinations.
+
+> Want just the rent + a quick read on the area, without the sub-agent fan-out and scoring? That's `/rentometer-quick-analysis`. This skill is the heavyweight: parallel sub-agents, cashflow math, strategy comparison, and a graded verdict.
 
 ## Phase 0 — Route on input shape
 
@@ -22,15 +24,15 @@ If a listing URL is pasted, treat it as address-like.
 Run these in order:
 
 1. Confirm address + bed/bath from the listing (or ask).
-2. Run `/rentometer-summary` for the address. Capture the response (including the geocoded `address`, `latitude`, `longitude`, and `token`).
+2. Run `/rentometer-summary` for the address. Capture the response (including the geocoded `address`, `latitude`, `longitude`, `token`, the full percentile ladder, and the **`atlas` array**).
 3. Run `/rentometer-comps` with the token. Capture the comp list.
 4. **Pull the surrounding area's Atlas bundle.** This is what makes the address path competitive with anything that scrapes for area data:
-   1. Extract the ZIP from the geocoded `address` string in the summary response (the 5-digit token before the country, e.g. `45208` in `"Cincinnati, OH 45208, USA"`). Fall back to `City, ST` if no ZIP is present.
-   2. Call `/rentometer-atlas-search` with the ZIP (or `City, ST`) as `q`. Take the top match — usually the right slug. If results are empty, retry with broader `q` (city only, then state only).
+   1. **Preferred — use the `atlas` array from the summary response.** A point/address summary returns `atlas`: the bounded areas containing the searched point, each `{slug, geoid, name, type, area_type}`, broadest → narrowest. Pick the most specific useful entry (a `place`/`city` or `zcta`/`zip`) and use its `slug` directly — **no ZIP-extraction or atlas-search round-trip needed**.
+   2. **Fallback — if `atlas` is absent** (the `atlas_api_geo_linkage` flag is off for this account): extract the ZIP from the geocoded `address` string (the 5-digit token, e.g. `45208` in `"Cincinnati, OH 45208, USA"`; fall back to `City, ST`), call `/rentometer-atlas-search` with it as `q`, and take the top match's slug.
    3. Call `/rentometer-atlas-facts` with that slug. Capture the entire bundle.
-   4. If the ZIP-level slug returns thin or missing data, also try the city-level slug and merge — neighborhoods/ZIPs sometimes lack their own ACS rollup while the parent city has it.
+   4. If the ZIP/neighborhood-level slug returns thin data, also try the next-broader entry from the `atlas` array (the city or metro) and merge — neighborhoods/ZIPs sometimes lack their own ACS rollup while the parent city has it.
 
-   The atlas-facts response replaces 60–80% of what the address-path sub-agents would otherwise web-scrape for. **You can also do steps 3 and 4 in parallel** once you have the summary response (the comps call needs the token from step 2, atlas-search needs the geocoded address — both inputs are available after step 2 completes).
+   The atlas-facts response replaces 60–80% of what the address-path sub-agents would otherwise web-scrape for. The comps call (needs the `token`) and the atlas-facts call (needs a slug from the `atlas` array) are both available after step 2, so **you can run steps 3 and 4 in parallel.**
 
 Stop and warn the user if `samples < 5` — the analysis won't be reliable. (Atlas facts can still be useful in that case, but flag the comp-thinness explicitly.)
 
@@ -38,7 +40,7 @@ Stop and warn the user if `samples < 5` — the analysis won't be reliable. (Atl
 
 Run synchronously:
 
-1. Run `/rentometer-atlas-search` to resolve the user's place name. If multiple plausible matches, ask the user to pick. Capture the chosen `slug` and `area_type`.
+1. Run `/rentometer-atlas-search` to resolve the user's place name (or pass `geoid=<FIPS/ZCTA>` if the user gave a code). If multiple plausible matches, ask the user to pick. Capture the chosen `slug` and `area_type`.
 2. Run `/rentometer-atlas-facts` with the slug. **This single call returns rent breakdown PLUS demographics PLUS fair-market rents PLUS unemployment PLUS industry/wage data PLUS building permits.** Capture the whole bundle.
 
 That's it. One credit, one call, no web scraping. Most of what the address-path sub-agents would research is already in this response — the sub-agent fan-out below is correspondingly leaner.
@@ -52,7 +54,7 @@ Dispatch five sub-agents in parallel (single message with five Agent tool calls)
 | **comps-analyst** | Reviews comps from Phase 1A. Outlier detection, sample quality, distance distribution. Confidence-banded fair-market rent estimate. Score: comp quality 0–100. | `nearby_comps` (Phase 1A) |
 | **cashflow-analyst** | Asks user (or estimates) purchase price, down payment %, interest rate, taxes, insurance, HOA, vacancy %, mgmt %. Computes monthly + annual cash flow, cap rate, cash-on-cash return, GRM, DSCR. Cross-checks the rent assumption against `atlas-facts.facts.hud_fmr` for the appropriate bedroom count — flags a warning if the listing's asking rent is more than 20% above HUD FMR for that area. Score: income potential 0–100. | `summary`, `nearby_comps`, `atlas-facts.facts.hud_fmr` |
 | **neighborhood-analyst** | **PRIMARY:** Read `atlas-facts.facts.acs` (demographics, median income, household composition, education level) and `atlas-facts.facts.hud_chas` (cost-burdened renter rate, affordability indicators) directly. **SECONDARY (only if absent):** Web-search for school ratings (GreatSchools), crime stats, walkability — `atlas-facts` doesn't cover those. **Do not** re-scrape demographics, ACS data, or HUD affordability metrics; they're already first-party. Score: neighborhood quality 0–100. | `atlas-facts.facts.acs`, `atlas-facts.facts.hud_chas`, web (schools/crime/walkability only) |
-| **market-analyst** | **PRIMARY:** Read `atlas-facts.facts.bls_laus` (unemployment), `atlas-facts.facts.bls_qcew` (industry concentration, wages), `atlas-facts.facts.census_bps` (new-construction permits — direct supply-pressure signal). **SECONDARY (only if absent):** Web-search for months of supply, list-to-sale ratio, days on market, YoY price/rent change — `atlas-facts` doesn't cover those. **Do not** re-scrape BLS / Census data; treat the Atlas numbers as authoritative. Buyer's vs seller's market call. Score: market conditions 0–100. | `atlas-facts.facts.bls_laus`, `.bls_qcew`, `.census_bps`, web (market-velocity signals only) |
+| **market-analyst** | **PRIMARY:** Read `atlas-facts.facts.bls_laus` (unemployment), `atlas-facts.facts.bls_qcew` (industry concentration, wages), `atlas-facts.facts.census_bps` (new-construction permits — direct supply-pressure signal). For comparative context ("how does this area rank?"), consider `/rentometer-rankings` (e.g. rank ZIPs in the metro by `census_bps.permits_total` or `bls_laus.unemployment_rate`) — call `/rentometer-metrics` first to confirm the metric key and your entitlement. **SECONDARY (only if absent):** Web-search for months of supply, list-to-sale ratio, days on market, YoY price/rent change. **Do not** re-scrape BLS / Census data; treat the Atlas numbers as authoritative. Buyer's vs seller's market call. Score: market conditions 0–100. | `atlas-facts.facts.bls_laus`, `.bls_qcew`, `.census_bps`, `/rentometer-rankings` (optional), web (market-velocity signals only) |
 | **strategy-analyst** | Evaluates buy-and-hold, BRRRR, and fix-and-flip across 5/10-year horizons in bull/base/bear cases. Uses `atlas-facts.facts.census_bps` (supply growth) and `atlas-facts.facts.bls_qcew` (wage growth) as inputs to its appreciation projections. Strategy depends on the others' outputs — dispatch it last or roll into Phase 3. Score: investment upside 0–100. | All of the above |
 
 Each sub-agent's prompt should include the Phase 1A summary + comps + atlas-facts JSON, the user's stated goal, and:
@@ -65,7 +67,7 @@ The Atlas facts bundle already supplies what `neighborhood-analyst` and `market-
 | Sub-agent | What it produces |
 |---|---|
 | **rent-analyst** | Reads the Atlas `rent_breakdown` (overall, per-bedroom, per-property-type). Calls out which bed/bath/property-type combos are most numerous (high confidence) and which are sparse. Flags any unusual spreads. Score: comp quality 0–100. |
-| **area-analyst** | Reads the Atlas `facts` bundle — ACS demographics, HUD FMR, HUD CHAS, BLS LAUS, BLS QCEW, Census BPS. Synthesizes a coherent picture of the area's economic health, supply/demand balance, and resident profile. **Note which facts keys are absent and don't speculate about them.** Score: area quality 0–100 (single combined score replacing the neighborhood + market scores from the address path). |
+| **area-analyst** | Reads the Atlas `facts` bundle — ACS demographics, HUD FMR, HUD CHAS, BLS LAUS, BLS QCEW, Census BPS. Synthesizes a coherent picture of the area's economic health, supply/demand balance, and resident profile. For "how does this rank vs peers?" use `/rentometer-rankings` (confirm the metric key via `/rentometer-metrics` first). **Note which facts keys are absent and don't speculate about them.** Score: area quality 0–100 (single combined score replacing the neighborhood + market scores from the address path). |
 | **strategy-analyst** | Given the Atlas data (rent baseline + supply/demand signals from BPS / QCEW / LAUS), evaluates rental-investment strategies for the area: typical cap rates, what bed/bath count to target, whether the market favors buy-and-hold vs flip. If the user wants property-level cashflow, pause and ask them to provide a specific address (then route to Phase 1A on that). Score: investment upside 0–100. |
 
 Each gets the full Atlas-facts JSON in its prompt plus the user's goal.
@@ -115,9 +117,9 @@ For the area path, ask if the user wants to drill into specific properties. If y
 Tell the user upfront what this will cost:
 
 **Address path:**
-- 2 quickview credits (summary + atlas-facts for the surrounding area) + 1 premium credit (comps) from their wallet. `atlas-search` is free.
+- 2 quickview credits (summary + atlas-facts for the surrounding area) + 1 premium credit (comps) from their wallet. `atlas-search` is free (and usually skipped now that the summary's `atlas` array supplies the slug).
 - ~5× sub-agent tool budget on the Claude side — but each sub-agent's web-search budget is much smaller than before, since `atlas-facts` supplies most of what `neighborhood-analyst` and `market-analyst` would otherwise scrape (ACS, HUD, BLS, Census).
-- Typically 60–90 seconds wall-clock (down from ~3 minutes pre-atlas).
+- Typically 60–90 seconds wall-clock.
 
 **Area path:**
 - 1 quickview credit (atlas-facts). `atlas-search` is free.
@@ -130,7 +132,7 @@ If `$RENTOMETER_API_KEY` is unset, walk the user through `/rentometer-login` bef
 
 Anyone can stitch GreatSchools + city-data + BLS together at runtime — that's what other agentic real-estate tools do, and it's slow and prone to hallucinated comps. Rentometer owns first-party rental data plus an Atlas catalog with curated demographics, FMR, employment, and permits.
 
-- On the **address path** we leverage the comp data **and** pull the address's surrounding-ZIP Atlas bundle to feed first-party ACS/HUD/BLS/Census data straight into the neighborhood and market sub-agents. They web-search only for things Atlas doesn't cover (school ratings, walkability, market velocity).
+- On the **address path** we leverage the comp data **and** pull the address's surrounding Atlas bundle (resolved straight from the summary's `atlas` array) to feed first-party ACS/HUD/BLS/Census data into the neighborhood and market sub-agents. They web-search only for things Atlas doesn't cover (school ratings, walkability, market velocity).
 - On the **area path** we collapse 90% of the analyst work into a single API call.
 
 That's the structural advantage you're trading on every time you run this skill.
